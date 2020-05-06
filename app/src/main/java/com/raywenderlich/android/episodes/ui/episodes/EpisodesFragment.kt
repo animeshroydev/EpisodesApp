@@ -44,15 +44,26 @@ import com.raywenderlich.android.episodes.R
 import com.raywenderlich.android.episodes.databinding.EpisodesFragmentBinding
 import com.raywenderlich.android.episodes.di.Injectable
 import com.raywenderlich.android.episodes.ui.injectViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.coroutines.CoroutineContext
 
 
-class EpisodesFragment : Fragment(), Injectable {
+class EpisodesFragment : Fragment(), Injectable, CoroutineScope {
+
+  private var job = Job()
 
   @Inject
   lateinit var viewModelFactory: ViewModelProvider.Factory
 
   private lateinit var viewModel: EpisodesViewModel
+
+  override val coroutineContext: CoroutineContext
+    get() = Dispatchers.Main + job
 
   override fun onCreateView(
     inflater: LayoutInflater, container: ViewGroup?,
@@ -77,9 +88,17 @@ class EpisodesFragment : Fragment(), Injectable {
 
     val adapter = EpisodeAdapter()
     binding.episodeList.adapter = adapter
+    launch {
+      subscribeUi(adapter)
+    }
 
     setHasOptionsMenu(true)
     return binding.root
+  }
+
+  override fun onDestroy() {
+    super.onDestroy()
+    job.cancel()
   }
 
   override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -110,6 +129,13 @@ class EpisodesFragment : Fragment(), Injectable {
 
   private fun filterData(num: Int) {
     viewModel.setTrilogyNumber(num)
+  }
+
+  // it similar to RxJava observer.
+  private suspend fun subscribeUi(adapter: EpisodeAdapter) {
+    viewModel.episodesUsingFlow.collect { episodes ->
+      adapter.submitList(episodes)
+    }
   }
 
 }

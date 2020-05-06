@@ -49,5 +49,6 @@ interface EpisodeDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun saveAll(episodes: List<Episode>)
 
-
+  @Query("SELECT * FROM episode ORDER BY number")
+  fun loadAllEpisodesFlow(): Flow<List<Episode>>
 }
